@@ -1,6 +1,6 @@
 #include <SPI.h>
-#include "Adafruit_BLE_UART.h"
-#include "motordriver_4wd.h"
+#include <Adafruit_BLE_UART.h>
+#include <motordriver_4wd.h>
 #include <seeed_pwm.h>
 
 // Adafruit gyro
@@ -31,7 +31,7 @@ float yaw_bias = 0.0;
 float current_angle = 0.0;
 float desired_angle = 0.0;
 float alpha = 0.99;
-float current_pwm = 0;
+float current_pwm = 40;
 String state = "STRAIGHT";
 
 //Orientation Global
@@ -148,26 +148,14 @@ void getDestinationAngle()
 }
 
 void turnLeft() {
-  if (state == "RIGHT"){
-    current_pwm = 0;
-  }
-  state = "LEFT";
-  current_pwm += 5;
-  current_pwm = min(50, current_pwm);
-  MOTOR.setSpeedDir1(current_pwm, DIRF);
-  MOTOR.setSpeedDir2(current_pwm, DIRR);
+  MOTOR.setSpeedDir1(60, DIRF);
+  MOTOR.setSpeedDir2(60, DIRR);
 }
 
 
 void turnRight() {
-  if (state == "LEFT"){
-    current_pwm = 0;
-  }
-  state = "RIGHT";
-  current_pwm += 5;
-  current_pwm = min(35, current_pwm);
-  MOTOR.setSpeedDir1(current_pwm, DIRR);
-  MOTOR.setSpeedDir2(current_pwm, DIRF);
+  MOTOR.setSpeedDir1(60, DIRR);
+  MOTOR.setSpeedDir2(60, DIRF);
 }
 
 void stopTurns() {
@@ -183,22 +171,28 @@ void loop()
 {  
   handleBLEData();
   getGyroData();
-//  current_angle = alpha * current_angle + (1-alpha) * (orientation.heading - 180);
-  current_angle = orientation.heading;
+  current_angle = orientation.heading - 180;
   Serial.println(orientation.heading);
-//  Serial.print("desired angle: "); Serial.print(desired_angle); Serial.print(" current_angle: "); Serial.print(current_angle); Serial.print(" desired - current: "); Serial.println(desired_angle-current_angle);
-
-  if ((desired_angle - current_angle) > 10) {
+  Serial.print("desired angle: "); Serial.print(desired_angle); Serial.print(" current_angle: "); Serial.print(current_angle); Serial.print(" desired - current: "); Serial.println(desired_angle-current_angle);
+  float delta = desired_angle - current_angle;
+  if(delta < -180) {
+    delta += 360;
+  }
+  if(delta > 180) {
+    delta -= 360;
+  }
+  if (delta > 10) {
 //    Serial.println("turn right");
     turnRight();
-  } else if ((desired_angle - current_angle) < -10) {
+  } else if (delta < -10) {
 //    Serial.println("turn left");
     turnLeft();
   } else {
     Serial.println("within thresh");
-    
+    stopTurns();
   }
   delay(10);
+  return;
 //  
 //  MOTOR.setSpeedDir1(50, DIRF);
 //  MOTOR.setSpeedDir2(50, DIRR);
